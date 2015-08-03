@@ -113,10 +113,14 @@ class Client(object):
 
     def execute_command(self, op, *args, **kwargs):
         args = [force_unicode(arg) + "\x00" for arg in args]
+        # write values shouldn't be NUL terminated
+        if op == Op.WRITE:
+            args[-1] = args[-1][:-1]
 
         if not self.COMMAND_VALIDATORS.get(op, lambda *args: True)(*args):
             raise ValueError(args)
-        elif not all(re.match("^[\x00\x20-\x7f]+$", arg) for arg in args):
+        elif not all((not arg or re.match("^[\x00\x20-\x7f]+$", arg))
+                     for arg in args):
             raise ValueError(args)
 
         with self.tx_lock:
